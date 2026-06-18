@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Red Pick Media — LinkedIn Lead Intelligence</title>
+<style>
+  :root{
+    --bg0:#05060b; --ink:#eef1fa; --mut:#8990a8; --mut2:#525873;
+    --red:#ff2e4d; --red2:#ff6182; --cyan:#5fe1ff; --violet:#a479ff;
+    --glass:rgba(255,255,255,.045); --glass-br:rgba(255,255,255,.10);
+    --num:"SF Pro Display",-apple-system,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%; overflow:hidden;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg0); color:var(--ink); -webkit-font-smoothing:antialiased; user-select:none; letter-spacing:.01em;
+  }
+  .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; letter-spacing:-.02em;}
+
+  /* ---------------- animated background ---------------- */
+  .bg{position:fixed; inset:0; z-index:0; overflow:hidden;}
+  #net{position:absolute; inset:0;}
+  .aurora{position:absolute; border-radius:50%; filter:blur(90px); opacity:.55; mix-blend-mode:screen;}
+  .a1{width:80vw; height:80vw; left:-20vw; top:-15vh; background:radial-gradient(circle,#ff2e4d 0%,transparent 65%); animation:drift1 26s ease-in-out infinite;}
+  .a2{width:70vw; height:70vw; right:-25vw; bottom:-10vh; background:radial-gradient(circle,#5b3bff 0%,transparent 65%); animation:drift2 32s ease-in-out infinite;}
+  .a3{width:55vw; height:55vw; left:20vw; bottom:5vh; background:radial-gradient(circle,#00d0ff 0%,transparent 70%); opacity:.32; animation:drift1 38s ease-in-out infinite reverse;}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(8vw,6vh) scale(1.12);}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-7vw,-5vh) scale(1.15);}}
+  .grid{position:absolute; inset:0; opacity:.05;
+    background-image:linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px);
+    background-size:7vw 7vw; mask:radial-gradient(circle at 50% 45%, #000 35%, transparent 78%);}
+  .vignette{position:absolute; inset:0; background:radial-gradient(120% 90% at 50% 40%, transparent 35%, rgba(0,0,0,.55) 100%);}
+
+  /* ---------------- HUD ---------------- */
+  .brand{position:fixed; top:4.4vh; left:7vw; display:flex; align-items:center; gap:1.6vw; z-index:6;}
+  .brand .dot{width:2.8vw; height:2.8vw; border-radius:50%; background:var(--red); box-shadow:0 0 16px var(--red),0 0 30px rgba(255,46,77,.5);}
+  .brand .name{font-size:2.9vw; font-weight:700; letter-spacing:.26em; text-transform:uppercase;}
+  .brand .name span{color:var(--mut2); font-weight:500;}
+  .status{position:fixed; top:4.4vh; right:7vw; z-index:6; display:flex; align-items:center; gap:1.6vw;
+    font-family:var(--num); font-size:2.4vw; letter-spacing:.18em; color:var(--mut);}
+  .status .live{width:1.8vw; height:1.8vw; border-radius:50%; background:var(--cyan); box-shadow:0 0 10px var(--cyan); animation:blink 1.6s infinite;}
+  .status .idx{color:var(--ink); font-weight:700;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+  .frame{position:fixed; inset:2.4vh 3vw; border:1px solid rgba(255,255,255,.06); border-radius:2vw; z-index:1; pointer-events:none;}
+  .frame::before,.frame::after{content:""; position:absolute; width:5vw; height:5vw; border:1.5px solid rgba(255,46,77,.5);}
+  .frame::before{top:-1px; left:-1px; border-right:0; border-bottom:0; border-radius:2vw 0 0 0;}
+  .frame::after{bottom:-1px; right:-1px; border-left:0; border-top:0; border-radius:0 0 2vw 0;}
+
+  /* ---------------- stage / slides ---------------- */
+  .stage{position:fixed; inset:0; z-index:2;}
+  .slide{position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center;
+    padding:15vh 9vw 16vh; opacity:0; pointer-events:none;
+    transform:translateY(30px) scale(.985); filter:blur(7px); transition:opacity .6s ease, transform .6s ease, filter .6s ease;}
+  .slide.active{opacity:1; pointer-events:auto; transform:none; filter:blur(0);}
+  .eyebrow{font-family:var(--num); font-size:2.5vw; letter-spacing:.36em; text-transform:uppercase; color:var(--cyan); font-weight:600; margin-bottom:2.2vh;
+    display:flex; align-items:center; gap:1.6vw;}
+  .eyebrow::before{content:""; width:6vw; height:1px; background:linear-gradient(90deg,var(--cyan),transparent);}
+  h1{font-size:8.2vw; line-height:1.06; font-weight:800; letter-spacing:-.025em;}
+  h2{font-size:6vw; line-height:1.08; font-weight:800; letter-spacing:-.025em; margin-bottom:1.2vh;}
+  .sub{font-size:3.5vw; color:var(--mut); font-weight:500; line-height:1.55;}
+  .accent{color:var(--red); text-shadow:0 0 26px rgba(255,46,77,.45);}
+  .thin{font-weight:300; color:var(--mut);}
+
+  /* hook */
+  #s0 .sub{margin-top:3.2vh;}
+  .tap-begin{margin-top:6vh; display:inline-flex; align-items:center; gap:2.4vw; font-family:var(--num); font-size:3vw; color:var(--mut); font-weight:500; letter-spacing:.12em; text-transform:uppercase;}
+  .pulse{width:2.6vw; height:2.6vw; border-radius:50%; background:var(--red); box-shadow:0 0 12px var(--red); animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,46,77,.5);}70%{box-shadow:0 0 0 3.4vw rgba(255,46,77,0);}100%{box-shadow:0 0 0 0 rgba(255,46,77,0);}}
+
+  /* stat grid */
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:3.4vw; margin-top:3vh;}
+  .stat{position:relative; background:var(--glass); border:1px solid var(--glass-br); border-radius:3vw; padding:3vh 4.4vw; overflow:hidden;
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
+  .stat::before{content:""; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--red),var(--violet),var(--cyan));}
+  .stat .big{font-family:var(--num); font-size:9.2vw; font-weight:800; line-height:1; text-shadow:0 0 24px rgba(255,46,77,.28);}
+  .stat.c .big{color:var(--cyan); text-shadow:0 0 24px rgba(95,225,255,.32);}
+  .stat .lbl{font-size:2.9vw; color:var(--mut); margin-top:1.4vh; font-weight:500; line-height:1.35;}
+
+  /* donut */
+  .donut-wrap{display:flex; flex-direction:column; align-items:center; margin-top:2vh;}
+  .donut{position:relative; width:50vw; height:50vw; border-radius:50%; flex-shrink:0; cursor:pointer;
+    transform:rotate(-90deg); transition:transform 1.2s cubic-bezier(.2,.8,.2,1); filter:drop-shadow(0 0 26px rgba(255,46,77,.25));}
+  .donut .hole{position:absolute; inset:21%; border-radius:50%; background:rgba(8,9,16,.82); transform:rotate(90deg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 3.5vw;
+    box-shadow:inset 0 0 30px rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.06);}
+  .donut .hole .ht{font-family:var(--num); font-size:8.4vw; font-weight:800; line-height:1; color:var(--ink); transition:color .25s; text-shadow:0 0 22px rgba(255,255,255,.18);}
+  .donut .hole .hl{font-size:2.5vw; color:var(--mut); font-weight:700; margin-top:.8vh; letter-spacing:.08em; line-height:1.2;}
+  .donut .hole .hi{font-family:var(--num); font-size:2.9vw; color:var(--cyan); font-weight:700; margin-top:.9vh; line-height:1; letter-spacing:.04em;}
+  .legend{display:grid; grid-template-columns:1fr 1fr; gap:1.4vh 4vw; margin-top:3.2vh; width:100%;}
+  .lg{display:flex; align-items:center; gap:2.2vw; cursor:pointer; transition:.2s;}
+  .lg .sw{width:3.2vw; height:3.2vw; border-radius:50%; flex-shrink:0; transition:.2s;}
+  .lg .lt{font-size:2.8vw; font-weight:600; line-height:1.2; flex:1;}
+  .lg .lv{font-family:var(--num); font-size:2.8vw; font-weight:800; color:var(--ink);}
+  .lg.sel{transform:translateX(.6vw);} .lg.sel .lt{color:#fff;} .lg.sel .sw{transform:scale(1.25);}
+
+  /* c-suite */
+  #s3{align-items:center; text-align:center;}
+  .hero{font-family:var(--num); font-size:21vw; font-weight:800; line-height:.82; color:var(--red); margin-top:1vh;
+    text-shadow:0 0 40px rgba(255,46,77,.55),0 0 80px rgba(255,46,77,.25);}
+  .heron{font-size:3.3vw; color:var(--mut); font-weight:600; margin-top:1.6vh; letter-spacing:.03em; line-height:1.45;}
+  .chiefs{display:grid; grid-template-columns:1fr 1fr; gap:1.2vh 4vw; margin-top:2.6vh; width:100%;}
+  .chief{position:relative; background:var(--glass); border:1px solid var(--glass-br); border-radius:2.6vw; padding:1.5vh 3.4vw; text-align:left; overflow:hidden; backdrop-filter:blur(12px);}
+  .chief::before{content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--red); box-shadow:0 0 12px var(--red);}
+  .chief .n{font-family:var(--num); font-size:5.8vw; font-weight:800; line-height:1;}
+  .chief .t{font-size:2.5vw; color:var(--mut); margin-top:.6vh; font-weight:600; letter-spacing:.04em;}
+
+  /* income */
+  .inc-big{font-family:var(--num); font-size:14vw; font-weight:800; line-height:1; color:#fff; margin-top:1.2vh;
+    text-shadow:0 0 36px rgba(255,46,77,.5),0 0 70px rgba(164,121,255,.3);}
+  #s4 .sub{margin-top:1.6vh;}
+  .inc-rows{margin-top:2.4vh;}
+  .inc-row{margin-bottom:1.7vh;}
+  .inc-row .top{display:flex; justify-content:space-between; align-items:baseline;}
+  .inc-row .l{font-size:2.9vw; color:var(--mut); font-weight:600;}
+  .inc-row .v{font-family:var(--num); font-size:3.5vw; font-weight:800;}
+  .itrack{height:3.2vw; background:rgba(255,255,255,.05); border-radius:2vw; overflow:hidden; margin-top:1vh;}
+  .ifill{height:100%; width:0; border-radius:2vw; background:linear-gradient(90deg,var(--red),var(--violet)); box-shadow:0 0 14px rgba(255,46,77,.5);
+    transition:width 1.2s cubic-bezier(.2,.8,.2,1);}
+  .inc-row.hl .v{color:var(--cyan);}
+  .method{margin-top:2.2vh; font-family:var(--num); font-size:2.5vw; color:var(--mut2); cursor:pointer; border-bottom:1px dashed var(--mut2); display:inline-block; padding-bottom:.4vh; letter-spacing:.06em;}
+  .method-body{display:none; margin-top:1.6vh; font-size:2.6vw; color:var(--mut); line-height:1.55;}
+  .method-body.show{display:block;}
+
+  /* comparison */
+  .vs{display:flex; flex-direction:column; gap:1.2vh; margin-top:2vh;}
+  .col{position:relative; background:var(--glass); border:1px solid var(--glass-br); border-radius:3vw; padding:2vh 5vw; backdrop-filter:blur(12px); overflow:hidden;}
+  .col.li{border-color:rgba(255,46,77,.45); box-shadow:0 0 44px rgba(255,46,77,.14);}
+  .col.li::before{content:""; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--red),var(--violet));}
+  .col h3{font-size:3.7vw; font-weight:800; display:flex; align-items:center; gap:2.4vw; margin-bottom:1.3vh;}
+  .col h3 .pill{font-family:var(--num); font-size:2.2vw; padding:.6vh 2vw; border-radius:2vw; font-weight:700; letter-spacing:.08em;}
+  .col.li .pill{background:rgba(255,46,77,.18); color:var(--red2);}
+  .col.ig .pill{background:rgba(255,255,255,.07); color:var(--mut);}
+  .col ul{list-style:none; display:flex; flex-direction:column; gap:1vh;}
+  .col li{font-size:2.8vw; line-height:1.3; display:flex; gap:2.4vw; align-items:flex-start;}
+  .col li b{font-weight:800;}
+  .col li .mk{font-size:2.8vw; flex-shrink:0; font-weight:800; line-height:1.3;}
+  .col.li .mk{color:var(--cyan);} .col.ig .mk{color:var(--mut2);} .col.ig li{color:var(--mut);}
+  .vsmid{text-align:center; font-family:var(--num); font-size:3.4vw; font-weight:800; color:var(--mut2); letter-spacing:.1em;}
+  .illus{font-size:2.3vw; color:var(--mut2); margin-top:1.4vh; font-style:italic; text-align:center;}
+
+  /* close */
+  .cta{margin-top:4.6vh; display:inline-block; background:linear-gradient(90deg,var(--red),#ff476a); color:#fff; font-size:3.9vw; font-weight:800;
+    padding:2.6vh 7vw; border-radius:2.4vw; letter-spacing:.01em; box-shadow:0 14px 50px rgba(255,46,77,.4),0 0 0 1px rgba(255,255,255,.08) inset;}
+  #s6 .sub{margin-top:2.6vh;}
+  .closebar{margin-top:4vh; display:flex; gap:7vw;}
+  .closebar div span{font-family:var(--num); display:block; font-size:6.6vw; font-weight:800; line-height:1; text-shadow:0 0 22px rgba(255,46,77,.35);}
+  .closebar div small{font-size:2.7vw; color:var(--mut); font-weight:600;}
+  .closebar div.cy span{color:var(--cyan); text-shadow:0 0 22px rgba(95,225,255,.4);}
+
+  /* nav */
+  .nav{position:fixed; bottom:4.2vh; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:5vw; z-index:6;}
+  .dots{display:flex; gap:2.2vw;}
+  .dots i{width:2.2vw; height:2.2vw; border-radius:50%; background:rgba(255,255,255,.2); transition:.3s; cursor:pointer;}
+  .dots i.on{background:var(--red); width:7vw; border-radius:1.2vw; box-shadow:0 0 12px var(--red);}
+  .arrow{width:13vw; height:13vw; border-radius:50%; border:1px solid var(--glass-br); background:var(--glass); color:var(--ink);
+    font-size:5.5vw; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; backdrop-filter:blur(10px);}
+  .arrow:active{transform:scale(.9); background:rgba(255,46,77,.25); border-color:var(--red); box-shadow:0 0 20px rgba(255,46,77,.4);}
+  .arrow.off{opacity:.25; pointer-events:none;}
+
+  /* rotate prompt (portrait target) */
+  .rotate{position:fixed; inset:0; background:var(--bg0); z-index:99; display:none; flex-direction:column; align-items:center; justify-content:center; gap:3vh; text-align:center; padding:14vw;}
+  .rotate .ic{font-size:18vw; animation:rot 2.4s ease-in-out infinite;}
+  @keyframes rot{0%,100%{transform:rotate(90deg);}50%{transform:rotate(0);}}
+  @media (orientation:landscape){ .rotate{display:flex;} }
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div>
+  <canvas id="net"></canvas>
+  <div class="grid"></div>
+  <div class="vignette"></div>
+</div>
+<div class="frame"></div>
+
+<div class="brand"><div class="dot"></div><div class="name">RED PICK <span>MEDIA</span></div></div>
+<div class="status"><span class="live"></span> LIVE DATA · <span class="idx" id="idx">01</span>/07</div>
+
+<div class="stage" id="stage">
+
+  <!-- 0 HOOK -->
+  <section class="slide active" id="s0">
+    <div class="eyebrow">LinkedIn Lead Intelligence</div>
+    <h1>Over <span class="accent num">3,000 leads</span> on LinkedIn.<br><span class="thin">One online health, fitness and nutrition coach.</span></h1>
+    <p class="sub">Every lead a real, named professional with a verified senior title. We stripped out every junior manager. This is the senior tier only.</p>
+    <div class="tap-begin"><span class="pulse"></span> Tap to reveal the data</div>
+  </section>
+
+  <!-- 1 HEADLINE -->
+  <section class="slide" id="s1">
+    <div class="eyebrow">The Headline</div>
+    <h2>3,095 senior leads. <span class="thin">Zero junior managers.</span></h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="big num" data-count="3095">0</div><div class="lbl">Senior leads (managers excluded)</div></div>
+      <div class="stat"><div class="big num" data-count="1302">0</div><div class="lbl">C-suite or director-level</div></div>
+      <div class="stat"><div class="big num" data-count="74.8" data-suffix="%">0</div><div class="lbl">Senior decision-makers</div></div>
+      <div class="stat c"><div class="big num" data-count="212" data-prefix="$" data-suffix="k">0</div><div class="lbl">Avg. income (US equivalent)</div></div>
+    </div>
+  </section>
+
+  <!-- 2 DONUT -->
+  <section class="slide" id="s2">
+    <div class="eyebrow">The Breakdown · tap any group</div>
+    <h2>Who they actually are</h2>
+    <div class="donut-wrap">
+      <div class="donut" id="donut">
+        <div class="hole" id="hole">
+          <div class="ht num" id="holeMain" data-count="3095">0</div>
+          <div class="hl" id="holeSub">SENIOR LEADS</div>
+          <div class="hi" id="holeInc"></div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <!-- 3 C-SUITE -->
+  <section class="slide" id="s3">
+    <div class="eyebrow">The Top of the Pyramid</div>
+    <h2>478 of them run the company</h2>
+    <div class="hero num" data-count="478">0</div>
+    <div class="heron">C-suite & board-level leads<br>more than 1 in every 7 we generated</div>
+    <div class="chiefs">
+      <div class="chief"><div class="n num" data-count="206">0</div><div class="t">CHIEF EXECUTIVES</div></div>
+      <div class="chief"><div class="n num" data-count="48">0</div><div class="t">CFOs</div></div>
+      <div class="chief"><div class="n num" data-count="35">0</div><div class="t">COOs</div></div>
+      <div class="chief"><div class="n num" data-count="20">0</div><div class="t">CIOs / CTOs</div></div>
+      <div class="chief"><div class="n num" data-count="95">0</div><div class="t">OTHER CHIEFS</div></div>
+      <div class="chief"><div class="n num" data-count="74">0</div><div class="t">CHAIR / PRES / BOARD</div></div>
+    </div>
+  </section>
+
+  <!-- 4 INCOME -->
+  <section class="slide" id="s4">
+    <div class="eyebrow">The Spending Power</div>
+    <h2>What this audience is worth</h2>
+    <div class="inc-big num" data-count="655.3" data-prefix="$" data-suffix="M">0</div>
+    <p class="sub">in combined annual earning power — over half a billion dollars, if this audience sat in the United States.</p>
+    <div class="inc-rows">
+      <div class="inc-row hl"><div class="top"><div class="l">Average per lead</div><div class="v num" data-count="212" data-prefix="$" data-suffix="k">$0</div></div><div class="itrack"><div class="ifill" data-w="58"></div></div></div>
+      <div class="inc-row"><div class="top"><div class="l">C-suite & board tier</div><div class="v num" data-count="365" data-prefix="$" data-suffix="k">$0</div></div><div class="itrack"><div class="ifill" data-w="95"></div></div></div>
+      <div class="inc-row"><div class="top"><div class="l">Founder, MD & Partner tier</div><div class="v num" data-count="280" data-prefix="$" data-suffix="k">$0</div></div><div class="itrack"><div class="ifill" data-w="73"></div></div></div>
+      <div class="inc-row"><div class="top"><div class="l">Director & Head-of tier</div><div class="v num" data-count="188" data-prefix="$" data-suffix="k">$0</div></div><div class="itrack"><div class="ifill" data-w="49"></div></div></div>
+    </div>
+    <div class="method" id="methodToggle">How we calculated this →</div>
+    <div class="method-body" id="methodBody">Each lead is matched to a US market total-compensation midpoint for its job tier (CEO ≈ $420k, Director ≈ $190k), then summed and averaged across all 3,095 senior leads. Conservative benchmarks, used to show buyer seniority — not a guarantee of individual salary.</div>
+  </section>
+
+  <!-- 5 COMPARISON -->
+  <section class="slide" id="s5">
+    <div class="eyebrow">The Difference That Matters</div>
+    <h2>LinkedIn vs Instagram leads</h2>
+    <div class="vs">
+      <div class="col li">
+        <h3>LinkedIn <span class="pill">THIS CAMPAIGN</span></h3>
+        <ul>
+          <li><span class="mk">→</span><div><b>Verified senior title</b> on every lead</div></li>
+          <li><span class="mk">→</span><div><b>42% C-suite or director</b> · 75% senior decision-makers</div></li>
+          <li><span class="mk">→</span><div><b>~$212k</b> average professional income</div></li>
+          <li><span class="mk">→</span><div>Holds a <b>budget and buying authority</b></div></li>
+        </ul>
+      </div>
+      <div class="vsmid">VS</div>
+      <div class="col ig">
+        <h3>Instagram <span class="pill">TYPICAL</span></h3>
+        <ul>
+          <li><span class="mk">–</span><div>No verified role — <b>title unknown</b></div></li>
+          <li><span class="mk">–</span><div>Broad consumer reach, <b>mixed intent</b></div></li>
+          <li><span class="mk">–</span><div>Skews <b>low-ticket and impulse</b></div></li>
+          <li><span class="mk">–</span><div>Engagement ≠ <b>purchasing power</b></div></li>
+        </ul>
+      </div>
+    </div>
+    <div class="illus">Instagram column reflects typical lead-gen patterns. Swap in your own figures before publishing.</div>
+  </section>
+
+  <!-- 6 CLOSE -->
+  <section class="slide" id="s6">
+    <div class="eyebrow">Red Pick Media</div>
+    <h1>Stop chasing followers. <span class="accent">Start booking executives.</span></h1>
+    <p class="sub">This is the standard of lead we generate on LinkedIn for coaches and consultants ready to scale.</p>
+    <div class="closebar">
+      <div><span class="num" data-count="3095">0</span><small>senior leads</small></div>
+      <div><span class="num" data-count="655.3" data-prefix="$" data-suffix="M">0</span><small>buying power</small></div>
+      <div class="cy"><span class="num" data-count="0">0</span><small>junk leads</small></div>
+    </div>
+    <div class="cta">Book your LinkedIn growth call →</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <div class="arrow off" id="prev">‹</div>
+  <div class="dots" id="dots"></div>
+  <div class="arrow" id="next">›</div>
+</div>
+
+<div class="rotate"><div class="ic">📱</div><div style="font-size:5vw;font-weight:700">Turn your iPad portrait</div><div style="color:var(--mut);font-size:3.6vw">Built for vertical / Reels.</div></div>
+
+<script>
+/* ---------- particle network background ---------- */
+const cv=document.getElementById('net'), ctx=cv.getContext('2d');
+let W,H,DPR,nodes,LINK;
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=cv.width=innerWidth*DPR; H=cv.height=innerHeight*DPR;
+  cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px';
+  LINK=Math.min(W,H)*0.17;
+  const n=Math.max(34,Math.round(innerWidth/15));
+  nodes=[];
+  for(let i=0;i<n;i++) nodes.push({
+    x:Math.random()*W, y:Math.random()*H,
+    vx:(Math.random()-.5)*0.16*DPR, vy:(Math.random()-.5)*0.16*DPR,
+    c: Math.random()<0.62?[255,46,77]:[95,225,255]
+  });
+}
+function frame(){
+  ctx.clearRect(0,0,W,H);
+  for(let i=0;i<nodes.length;i++){
+    const a=nodes[i];
+    a.x+=a.vx; a.y+=a.vy;
+    if(a.x<0||a.x>W)a.vx*=-1; if(a.y<0||a.y>H)a.vy*=-1;
+    for(let j=i+1;j<nodes.length;j++){
+      const b=nodes[j], dx=a.x-b.x, dy=a.y-b.y, d=Math.hypot(dx,dy);
+      if(d<LINK){
+        ctx.strokeStyle=`rgba(${a.c[0]},${a.c[1]},${a.c[2]},${(1-d/LINK)*0.16})`;
+        ctx.lineWidth=DPR; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      }
+    }
+    ctx.fillStyle=`rgba(${a.c[0]},${a.c[1]},${a.c[2]},0.55)`;
+    ctx.beginPath(); ctx.arc(a.x,a.y,1.6*DPR,0,7); ctx.fill();
+  }
+  requestAnimationFrame(frame);
+}
+addEventListener('resize',resize); resize(); frame();
+
+/* ---------- donut data (hot → cool spectrum) ---------- */
+const TOTAL=3095;
+const GROUPS=[
+  {label:"C-suite / Director", count:1302, color:"#ff2e4d", income:"≈ $260k avg", ex:"CEO · CFO · COO · MD · Director"},
+  {label:"Chair / Pres / Board / VP", count:252, color:"#ff5d8a", income:"≈ $265k avg", ex:"Chairman · President · Board · SVP / VP"},
+  {label:"Founder / Owner", count:147, color:"#ef6cff", income:"≈ $260k avg", ex:"Founder · Co-Founder · Owner"},
+  {label:"Partner", count:95, color:"#a479ff", income:"≈ $280k avg", ex:"Partner · Managing Partner"},
+  {label:"Head of / GM", count:520, color:"#6c84ff", income:"≈ $185k avg", ex:"General Manager · Head of Sales · General Counsel"},
+  {label:"Senior Manager / Lead", count:190, color:"#4aa6ff", income:"≈ $150k avg", ex:"Senior Manager · Principal · Senior Director"},
+  {label:"Senior Professional", count:286, color:"#38c6e6", income:"≈ $105k avg", ex:"Senior Engineer · Supervisor · Specialist"},
+  {label:"Other Professional", count:303, color:"#2fe0c2", income:"≈ $95k avg", ex:"Engineer · Doctor · Analyst"},
+];
+const donut=document.getElementById('donut'), legend=document.getElementById('legend');
+const holeMain=document.getElementById('holeMain'), holeSub=document.getElementById('holeSub'), holeInc=document.getElementById('holeInc');
+let acc=0, stops=[];
+GROUPS.forEach(g=>{ const s=acc/TOTAL*360; acc+=g.count; const e=acc/TOTAL*360; stops.push(`${g.color} ${s.toFixed(2)}deg ${e.toFixed(2)}deg`); });
+const conic=`conic-gradient(${stops.join(',')})`;
+donut.style.background=conic;
+function resetHole(){
+  document.querySelectorAll('#legend .lg').forEach(x=>x.classList.remove('sel'));
+  holeMain.textContent=TOTAL.toLocaleString(); holeMain.style.color='var(--ink)';
+  holeSub.textContent='SENIOR LEADS'; holeInc.textContent='';
+}
+function showGroup(g,el){
+  document.querySelectorAll('#legend .lg').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel');
+  holeMain.textContent=g.count.toLocaleString(); holeMain.style.color=g.color;
+  holeSub.textContent=g.label.toUpperCase(); holeInc.textContent=g.income+' · US';
+}
+GROUPS.forEach(g=>{
+  const pct=(g.count/TOTAL*100).toFixed(1);
+  const el=document.createElement('div'); el.className='lg';
+  el.innerHTML=`<div class="sw" style="background:${g.color};box-shadow:0 0 8px ${g.color}"></div><div class="lt">${g.label}</div><div class="lv num">${pct}%</div>`;
+  el.addEventListener('click',()=>showGroup(g,el));
+  legend.appendChild(el);
+});
+donut.addEventListener('click',resetHole);
+
+/* ---------- nav ---------- */
+const slides=[...document.querySelectorAll('.slide')];
+const dotsWrap=document.getElementById('dots'); const idxEl=document.getElementById('idx');
+slides.forEach((_,i)=>{const d=document.createElement('i'); if(!i)d.classList.add('on'); d.addEventListener('click',()=>go(i)); dotsWrap.appendChild(d);});
+const dots=[...dotsWrap.children];
+let cur=0, animated={};
+function go(n){
+  if(n<0||n>=slides.length) return;
+  slides[cur].classList.remove('active'); dots[cur].classList.remove('on');
+  cur=n;
+  slides[cur].classList.add('active'); dots[cur].classList.add('on');
+  idxEl.textContent=String(cur+1).padStart(2,'0');
+  document.getElementById('prev').classList.toggle('off',cur===0);
+  document.getElementById('next').classList.toggle('off',cur===slides.length-1);
+  runSlide(cur);
+}
+document.getElementById('next').addEventListener('click',()=>go(cur+1));
+document.getElementById('prev').addEventListener('click',()=>go(cur-1));
+document.addEventListener('keydown',e=>{ if(e.key==='ArrowRight'||e.key==='ArrowDown')go(cur+1); if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(cur-1);});
+document.getElementById('s0').addEventListener('click',()=>go(1));
+let ty=0;
+document.addEventListener('touchstart',e=>ty=e.changedTouches[0].clientX,{passive:true});
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-ty; if(Math.abs(dx)>55){ dx<0?go(cur+1):go(cur-1);}},{passive:true});
+
+/* ---------- counters + reveals ---------- */
+function animateCount(el){
+  const target=parseFloat(el.dataset.count), pre=el.dataset.prefix||"", suf=el.dataset.suffix||"";
+  const dec=(target%1!==0)?1:0, dur=1150, t0=performance.now();
+  function step(t){
+    const p=Math.min((t-t0)/dur,1), e=1-Math.pow(1-p,3), v=target*e;
+    el.textContent=pre+(dec?v.toFixed(1):Math.round(v).toLocaleString())+suf;
+    if(p<1)requestAnimationFrame(step); else el.textContent=pre+(dec?target.toFixed(1):target.toLocaleString())+suf;
+  }
+  requestAnimationFrame(step);
+}
+function runSlide(i){
+  const s=slides[i];
+  if(i===2 && !animated[2]) donut.style.transform='rotate(270deg)';
+  if(animated[i]) return; animated[i]=true;
+  s.querySelectorAll('[data-count]').forEach(animateCount);
+  setTimeout(()=>s.querySelectorAll('.ifill').forEach(f=>f.style.width=f.dataset.w+'%'),140);
+}
+document.getElementById('methodToggle').addEventListener('click',function(){document.getElementById('methodBody').classList.toggle('show');});
+runSlide(0);
+</script>
+</body>
+</html>
